@@ -7,6 +7,7 @@
     "build": "bun run --filter client build",
     "start": "bun run --filter server start",
     "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun run --filter server test"
+    "test": "bun run --filter server test",
+    "db:setup": "bun run --filter server db:setup"
   }
 }

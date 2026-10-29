@@ -9,12 +9,12 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 ## Phase 0 — Setup (20 min)
 
 - [x] **Git:** `DataStraw/` is its own repo, so nothing from the home folder gets committed. Create the GitHub repo.
-- [ ] Bun workspaces: root `package.json` with `client` and `server`.
-- [ ] `server`: Express + TS run by Bun (`bun --watch`), pino, zod, pg, jsonwebtoken, cookie-parser, express-rate-limit (`Bun.password` replaces bcrypt).
-- [ ] `client`: Vite `react-ts` template, React Router, TanStack Query; Vite dev server proxies `/api`, `/webhook` and `/health` to the server.
-- [ ] `.gitignore` (`node_modules`, `dist`, `.env`), `.env.example`, `config.ts` (zod env validation).
+- [x] Bun workspaces: root `package.json` with `client` and `server`.
+- [x] `server`: Express + TS run by Bun (`bun --watch`), pino, zod, pg, jsonwebtoken, cookie-parser, express-rate-limit (`Bun.password` replaces bcrypt).
+- [x] `client`: Vite `react-ts` template, React Router, TanStack Query; Vite dev server proxies `/api`, `/webhook` and `/health` to the server.
+- [x] `.gitignore` (`node_modules`, `dist`, `.env`), `.env.example`, `config.ts` (zod env validation).
 - [ ] Supabase project created and `DATABASE_URL` in `.env`.
-- [ ] LLM free-tier key obtained; check that a test curl returns a completion.
+- [x] LLM free-tier key obtained; check that a test curl returns a completion.
 
 **Done when:** `bun run dev` starts both apps; `/health` returns `{ ok: true, db: true }`.
 
@@ -22,9 +22,9 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 
 ## Phase 1 — Database (25 min)
 
-- [ ] `001_init.sql`: `agents`, `customers`, `conversations` (+ partial unique index), `messages`, `drafts`, `webhook_events`, indexes.
-- [ ] `migrate.ts`: `schema_migrations` table, runs pending files in order inside a transaction, on boot.
-- [ ] Seed: one agent from `SEED_AGENT_EMAIL/PASSWORD` (bcrypt), idempotent.
+- [x] `001_init.sql`: `agents`, `customers`, `conversations` (+ partial unique index), `messages`, `drafts`, `webhook_events`, indexes.
+- [x] `migrate.ts`: `schema_migrations` table, runs pending files in order inside a transaction, on boot.
+- [x] Seed: one agent from `SEED_AGENT_EMAIL/PASSWORD` (bcrypt), idempotent.
 
 **Done when:** a fresh DB migrates and seeds; re-running does nothing.
 

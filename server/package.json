@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun --env-file=../.env --watch src/index.ts",
     "start": "bun src/index.ts",
+    "db:setup": "bun --env-file=../.env src/db/setup.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

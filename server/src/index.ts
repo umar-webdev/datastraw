@@ -1,7 +1,15 @@
 import { createApp } from "./app";
 import { config } from "./config";
 import { pool } from "./db/pool";
+import { setupDatabase } from "./db/setup";
 import { logger } from "./lib/logger";
+
+try {
+  await setupDatabase();
+} catch (err) {
+  logger.fatal({ err }, "database setup failed, not starting");
+  process.exit(1);
+}
 
 const server = createApp().listen(config.PORT, () => {
   logger.info({ port: config.PORT, env: config.NODE_ENV }, "server listening");
