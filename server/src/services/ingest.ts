@@ -1,5 +1,6 @@
 import { withTransaction } from "../db/pool";
 import type { TextMessageEvent } from "../lib/webhookPayload";
+import { toPreview } from "../lib/preview";
 
 export type IngestSource = "webhook" | "customer_view";
 
@@ -7,7 +8,6 @@ export type IngestResult =
   | { status: "accepted"; conversationId: string; messageId: string; draftId: string }
   | { status: "duplicate" };
 
-const PREVIEW_LENGTH = 140;
 
 /**
  * The single entry point for a customer message, used by both the webhook and the Customer view (decision D6).
@@ -40,8 +40,10 @@ export async function ingestMessage(event: TextMessageEvent, source: IngestSourc
     const customerId = customer.rows[0]!.id;
 
     const text = event.message.text;
-    const preview = text.length > PREVIEW_LENGTH ? text.slice(0, PREVIEW_LENGTH - 1) + "…" : text;
-    const sentAt = event.timestamp;
+    const preview = toPreview(text);
+    // The sender's clock can't be trusted to be right: a timestamp in the future would pin this conversation to the
+    // top of the inbox and put the message after later replies, so it's capped at the time we received it.
+    const sentAt = new Date(Math.min(Date.parse(event.timestamp), Date.now())).toISOString();
 
     const existing = await db.query<{ id: string }>(
       `SELECT id FROM conversations WHERE customer_id = $1 AND status = 'open' FOR UPDATE`,

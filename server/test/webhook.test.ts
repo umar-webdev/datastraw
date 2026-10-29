@@ -135,6 +135,15 @@ describe.skipIf(!hasTestDb)("POST /webhook: storing messages", () => {
     expect(Number(live.rows[0].count)).toBe(1);
   });
 
+  test("a timestamp in the future is capped at the time the message arrived", async () => {
+    const before = Date.now();
+    await postWebhook({ ...makeEvent({ text: "From a fast clock" }), timestamp: "2099-01-01T00:00:00Z" });
+    const row = (await pool.query("SELECT m.sent_at, c.last_message_at FROM messages m JOIN conversations c ON c.id = m.conversation_id")).rows[0];
+    expect(row.sent_at.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(row.sent_at.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(row.last_message_at.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
   test("an older message delivered late doesn't replace the latest preview", async () => {
     await postWebhook(makeEvent({ text: "Newest" }));
     const late = { ...makeEvent({ text: "Older" }), timestamp: "2020-01-01T00:00:00Z" };

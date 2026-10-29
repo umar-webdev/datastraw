@@ -2,8 +2,10 @@ import { z } from "zod";
 import { KB_VERSION } from "../ai/knowledgeBase";
 import { completeChat } from "../ai/llmClient";
 import { buildDraftMessages, HISTORY_LIMIT, type ChatMessage, type HistoryMessage } from "../ai/prompt";
-import { pool } from "../db/pool";
+import { pool, withTransaction } from "../db/pool";
+import { HttpError } from "../middleware/errorHandler";
 import { logger } from "../lib/logger";
+import { toPreview } from "../lib/preview";
 
 /** After this many attempts a draft stays `failed` until an agent clicks Regenerate. */
 export const MAX_DRAFT_ATTEMPTS = 3;
@@ -115,4 +117,70 @@ export async function generateDraft(draftId: string): Promise<void> {
 /** Starts generating a draft in the background, so the HTTP response isn't held up by the model (decision D8). */
 export function scheduleDraft(draftId: string): void {
   generateDraft(draftId).catch((err) => logger.error({ err, draftId }, "draft generation crashed"));
+}
+
+const LIVE = ["pending", "ready", "failed"];
+
+/**
+ * Saves the agent's (possibly edited) text as a reply and marks the draft approved, in one transaction.
+ *
+ * Any live draft can be approved, including one still `pending` or `failed`: a slow or broken model never stops an
+ * agent from replying (decision D16). The conditional update means a double click, or two agents at once, can only
+ * send one reply; a draft replaced by a newer customer message returns 409 so the agent sees that message first.
+ */
+export async function approveDraft(draftId: string, text: string, agentId: string) {
+  return withTransaction(async (db) => {
+    const draft = await db.query<{ conversation_id: string }>(
+      `UPDATE drafts SET status = 'approved', updated_at = now()
+       WHERE id = $1 AND status = ANY($2)
+       RETURNING conversation_id`,
+      [draftId, LIVE],
+    );
+    const row = draft.rows[0];
+    if (!row) {
+      const existing = await db.query<{ status: string }>("SELECT status FROM drafts WHERE id = $1", [draftId]);
+      const status = existing.rows[0]?.status;
+      if (!status) throw new HttpError(404, "Draft not found");
+      throw new HttpError(
+        409,
+        status === "approved"
+          ? "This draft was already approved"
+          : "The customer sent a new message, so this draft was replaced. Please review the latest draft.",
+      );
+    }
+
+    const message = await db.query<{ id: string; sender: string; text: string; sentAt: string }>(
+      `INSERT INTO messages (conversation_id, sender, text, agent_id, sent_at)
+       VALUES ($1, 'agent', $2, $3, now())
+       RETURNING id, sender, text, sent_at AS "sentAt"`,
+      [row.conversation_id, text, agentId],
+    );
+    const reply = message.rows[0]!;
+
+    await db.query("UPDATE drafts SET approved_message_id = $2 WHERE id = $1", [draftId, reply.id]);
+    const preview = toPreview(text);
+    await db.query(
+      `UPDATE conversations SET last_message_at = GREATEST(last_message_at, $2), last_message_preview = $3 WHERE id = $1`,
+      [row.conversation_id, reply.sentAt, preview],
+    );
+    return reply;
+  });
+}
+
+/** Throws away the current suggestion and asks the model again, with a fresh set of attempts. */
+export async function regenerateDraft(draftId: string): Promise<void> {
+  const reset = await pool.query(
+    `UPDATE drafts
+     SET status = 'pending', text = NULL, needs_attention = false, reason = NULL, attempts = 0, last_error = NULL,
+         updated_at = now()
+     WHERE id = $1 AND status IN ('ready', 'failed')`,
+    [draftId],
+  );
+  if (reset.rowCount === 0) {
+    const existing = await pool.query<{ status: string }>("SELECT status FROM drafts WHERE id = $1", [draftId]);
+    const status = existing.rows[0]?.status;
+    if (!status) throw new HttpError(404, "Draft not found");
+    throw new HttpError(409, status === "pending" ? "A draft is already being written" : `This draft is ${status}`);
+  }
+  scheduleDraft(draftId);
 }

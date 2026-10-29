@@ -81,6 +81,14 @@ Short ADR-style records: context → decision → why → trade-off / when to re
 - **Decision:** Approve is allowed when the draft status is `failed`. The editor is empty and the agent types the reply.
 - **Why:** The AI only assists. An LLM outage should slow agents down, not stop them.
 
+## D20. Message times from the sender are capped at "now"
+- **Decision:** A message's `sent_at` is the payload's `timestamp`, unless that is in the future, in which case it's the time we received it.
+- **Why:** Found while testing: the brief's sample payload is dated 2026-11-03, days ahead of today. Trusting it pinned that conversation to the top of the inbox above newer activity, and would order the message after replies sent later. Past timestamps are still kept, so late deliveries sit in their real place (and don't move the preview backwards).
+
+## D21. Login rate limit counts only failures
+- **Decision:** 10 failed sign-ins per minute per IP; successful sign-ins don't count.
+- **Why:** It slows down password guessing without locking out agents who share an office IP and sign in correctly.
+
 ## D19. A fallback model for the retry
 - **Decision:** `completeChat` makes at most two tries. The first uses the primary model; the retry uses `LLM_FALLBACK_MODEL` (optionally on another provider via `LLM_FALLBACK_BASE_URL`/`LLM_FALLBACK_API_KEY`) when it's set, else the primary again after a short wait.
 - **Why:** While building, Gemini's free tier returned 503 "high demand" or timed out on roughly half of the calls for a while. Retrying the same overloaded model helps little; a second provider makes failures independent. Drafts that still fail are retried by the sweeper (up to 3 attempts), and the agent can always write the reply by hand (D16).

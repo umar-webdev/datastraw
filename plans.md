@@ -59,14 +59,14 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 
 ## Phase 4 — Agent auth + API (30 min)
 
-- [ ] `POST /api/auth/login` (rate limited), `POST /api/auth/logout`, `GET /api/auth/me`.
-- [ ] `requireAgent` middleware (verify JWT cookie → `req.agent`).
-- [ ] `GET /api/agent/conversations` — name, preview, time, live draft status / needs_attention; `ORDER BY last_message_at DESC LIMIT 100`.
-- [ ] `GET /api/agent/conversations/:id` — customer, messages, live draft.
-- [ ] `POST /api/agent/drafts/:id/approve` — conditional update, `409` on conflict, insert agent message, update conversation.
-- [ ] `POST /api/agent/drafts/:id/regenerate` — reset attempts, set `pending`, kick off generation.
-- [ ] Central error handler (zod → 400, known errors → status, unknown → 500 with requestId, no stack in prod).
-- [ ] Tests: approve happy path; double approve → 409; approve superseded → 409; agent routes without cookie → 401.
+- [x] `POST /api/auth/login` (rate limited), `POST /api/auth/logout`, `GET /api/auth/me`.
+- [x] `requireAgent` middleware (verify JWT cookie → `req.agent`).
+- [x] `GET /api/agent/conversations` — name, preview, time, live draft status / needs_attention; `ORDER BY last_message_at DESC LIMIT 100`.
+- [x] `GET /api/agent/conversations/:id` — customer, messages, live draft.
+- [x] `POST /api/agent/drafts/:id/approve` — conditional update, `409` on conflict, insert agent message, update conversation.
+- [x] `POST /api/agent/drafts/:id/regenerate` — reset attempts, set `pending`, kick off generation.
+- [x] Central error handler (zod → 400, known errors → status, unknown → 500 with requestId, no stack in prod).
+- [x] Tests: approve happy path; double approve → 409; approve superseded → 409; agent routes without cookie → 401.
 
 ---
 

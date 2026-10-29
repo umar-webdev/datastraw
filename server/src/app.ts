@@ -1,9 +1,12 @@
+import cookieParser from "cookie-parser";
 import express from "express";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDbHealthy } from "./db/pool";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { requestId } from "./middleware/requestId";
+import { createAgentRouter } from "./routes/agent";
+import { createAuthRouter } from "./routes/auth";
 import { createCustomerRouter } from "./routes/customer";
 import { webhookRouter } from "./routes/webhook";
 
@@ -24,7 +27,9 @@ export function createApp() {
   // The webhook route must be mounted before express.json(): it needs the raw body for the signature.
   app.use(webhookRouter);
 
-  app.use("/api", express.json({ limit: "100kb" }));
+  app.use("/api", express.json({ limit: "100kb" }), cookieParser());
+  app.use("/api/auth", createAuthRouter());
+  app.use("/api/agent", createAgentRouter());
   app.use("/api/customer", createCustomerRouter());
   app.use("/api", notFound);
 
