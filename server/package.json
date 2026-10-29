@@ -7,6 +7,7 @@
     "start": "bun src/index.ts",
     "db:setup": "bun --env-file=../.env src/db/setup.ts",
     "webhook": "bun scripts/send-webhook.ts",
+    "try-drafts": "bun --env-file=../.env scripts/try-drafts.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

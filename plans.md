@@ -46,12 +46,12 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 
 ## Phase 3 — AI drafting (45 min) ⭐ core
 
-- [ ] `ai/knowledgeBase.ts`: KB text exactly as given + `KB_VERSION`.
-- [ ] `ai/prompt.ts`: system prompt (rules from architecture §6), last 20 messages as chat turns, JSON output instruction.
-- [ ] `ai/llmClient.ts`: fetch `/chat/completions`, `AbortController` 20 s timeout, 1 retry on 429/5xx with backoff, JSON parse + zod, one repair attempt.
-- [ ] `services/drafts.ts` `generateDraft(id)`: conditional claim → call → `ready` / `failed` with `last_error`; never overwrite `superseded`.
-- [ ] `services/sweeper.ts`: on boot + every 60 s.
-- [ ] Run all 5 sample messages and check the outputs by hand against the expected table in architecture §6. Tune the prompt until Dubai and allergy get `needs_attention` and the COD ₹3,500 answer is a clear "no".
+- [x] `ai/knowledgeBase.ts`: KB text exactly as given + `KB_VERSION`.
+- [x] `ai/prompt.ts`: system prompt (rules from architecture §6), last 20 messages as chat turns, JSON output instruction.
+- [x] `ai/llmClient.ts`: fetch `/chat/completions`, `AbortController` 20 s timeout, 1 retry on 429/5xx with backoff, JSON parse + zod, one repair attempt.
+- [x] `services/drafts.ts` `generateDraft(id)`: conditional claim → call → `ready` / `failed` with `last_error`; never overwrite `superseded`.
+- [x] `services/sweeper.ts`: on boot + every 60 s.
+- [x] Run all 5 sample messages and check the outputs by hand against the expected table in architecture §6. Tune the prompt until Dubai and allergy get `needs_attention` and the COD ₹3,500 answer is a clear "no".
 
 **Done when:** sending a message produces a `ready` draft within seconds; killing the LLM key produces `failed` with an error, and the sweeper retries.
 

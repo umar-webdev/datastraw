@@ -1,9 +1,118 @@
+import { z } from "zod";
+import { KB_VERSION } from "../ai/knowledgeBase";
+import { completeChat } from "../ai/llmClient";
+import { buildDraftMessages, HISTORY_LIMIT, type ChatMessage, type HistoryMessage } from "../ai/prompt";
+import { pool } from "../db/pool";
 import { logger } from "../lib/logger";
 
+/** After this many attempts a draft stays `failed` until an agent clicks Regenerate. */
+export const MAX_DRAFT_ATTEMPTS = 3;
+
+const DraftOutput = z.object({
+  reply: z.string().trim().min(1).max(1500),
+  needs_attention: z.boolean(),
+  reason: z.string().trim().max(500).default(""),
+});
+export type DraftOutput = z.infer<typeof DraftOutput>;
+
+/** Parses the model's text into a draft, tolerating a ```json fence around the object. */
+export function parseDraftOutput(content: string): DraftOutput {
+  const unfenced = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  let json: unknown;
+  try {
+    json = JSON.parse(unfenced);
+  } catch {
+    throw new Error("model output is not valid JSON");
+  }
+  const parsed = DraftOutput.safeParse(json);
+  if (!parsed.success) {
+    throw new Error(`model output has the wrong shape: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
+  }
+  return parsed.data;
+}
+
+/** Calls the model; if its answer isn't the JSON we asked for, asks once more to fix it. */
+export async function draftReply(history: HistoryMessage[]): Promise<DraftOutput & { model: string }> {
+  const messages = buildDraftMessages(history);
+  const first = await completeChat(messages);
+  try {
+    return { ...parseDraftOutput(first.content), model: first.model };
+  } catch (err) {
+    logger.warn({ error: (err as Error).message }, "draft output invalid, asking the model to repair it");
+    const repair: ChatMessage[] = [
+      ...messages,
+      { role: "assistant", content: first.content },
+      {
+        role: "user",
+        content: 'That was not a valid JSON object. Reply with only {"reply": string, "needs_attention": boolean, "reason": string}.',
+      },
+    ];
+    const second = await completeChat(repair);
+    return { ...parseDraftOutput(second.content), model: second.model };
+  }
+}
+
 /**
- * Starts generating the AI draft for a pending draft row, without blocking the caller.
- * Phase 3 replaces this stub with the LLM call; until then drafts stay `pending`.
+ * Generates the AI suggestion for one draft and saves it as `ready`, or `failed` with the error.
+ *
+ * Safe to call more than once: it only works on drafts that are still `pending` or `failed` and under the attempt
+ * limit, and it never overwrites a draft that was superseded or approved while the model was thinking.
  */
+export async function generateDraft(draftId: string): Promise<void> {
+  const log = logger.child({ draftId });
+
+  const claimed = await pool.query<{ conversation_id: string; attempts: number }>(
+    `UPDATE drafts SET attempts = attempts + 1, updated_at = now()
+     WHERE id = $1 AND status IN ('pending', 'failed') AND attempts < $2
+     RETURNING conversation_id, attempts`,
+    [draftId, MAX_DRAFT_ATTEMPTS],
+  );
+  const draft = claimed.rows[0];
+  if (!draft) return; // already done, replaced, or out of attempts
+
+  const started = Date.now();
+  try {
+    const history = await pool.query<HistoryMessage>(
+      `SELECT sender, text FROM (
+         SELECT sender, text, sent_at, created_at FROM messages
+         WHERE conversation_id = $1
+         ORDER BY sent_at DESC, created_at DESC
+         LIMIT $2
+       ) recent ORDER BY sent_at, created_at`,
+      [draft.conversation_id, HISTORY_LIMIT],
+    );
+    const result = await draftReply(history.rows);
+
+    const saved = await pool.query(
+      `UPDATE drafts
+       SET status = 'ready', text = $2, needs_attention = $3, reason = $4, model = $5, kb_version = $6,
+           last_error = NULL, updated_at = now()
+       WHERE id = $1 AND status IN ('pending', 'failed')`,
+      [draftId, result.reply, result.needs_attention, result.reason || null, result.model, KB_VERSION],
+    );
+    if (saved.rowCount === 0) {
+      log.info("draft was replaced or approved while generating; result discarded");
+      return;
+    }
+    log.info(
+      { attempt: draft.attempts, ms: Date.now() - started, needsAttention: result.needs_attention },
+      "draft ready",
+    );
+  } catch (err) {
+    const message = (err as Error).message.slice(0, 500);
+    await pool.query(
+      `UPDATE drafts SET status = 'failed', last_error = $2, updated_at = now()
+       WHERE id = $1 AND status IN ('pending', 'failed')`,
+      [draftId, message],
+    );
+    log.error({ attempt: draft.attempts, error: message }, "draft generation failed");
+  }
+}
+
+/** Starts generating a draft in the background, so the HTTP response isn't held up by the model (decision D8). */
 export function scheduleDraft(draftId: string): void {
-  logger.debug({ draftId }, "draft generation not implemented yet");
+  generateDraft(draftId).catch((err) => logger.error({ err, draftId }, "draft generation crashed"));
 }

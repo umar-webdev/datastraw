@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { pool } from "../src/db/pool";
-import { hasTestDb, makeEvent, resetDb, signed } from "./helpers";
+import { hasTestDb, makeEvent, resetDb, settleDrafts, signed, waitForDrafts } from "./helpers";
 
 const app = createApp();
 
@@ -68,9 +68,14 @@ describe("POST /webhook: rejected before touching the database", () => {
 });
 
 describe.skipIf(!hasTestDb)("POST /webhook: storing messages", () => {
-  beforeEach(resetDb);
+  // Let the previous test's background drafting finish before wiping the tables.
+  // (Done here rather than in afterEach: on Bun 1.1, awaiting DB work in afterEach never resumes.)
+  beforeEach(async () => {
+    await settleDrafts();
+    await resetDb();
+  });
 
-  test("saves customer, conversation, message and a pending draft", async () => {
+  test("saves customer, conversation, message and a draft that is then generated", async () => {
     const res = await postWebhook(makeEvent({ text: "Hi, my order #4471 hasn't arrived yet." }));
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("accepted");
@@ -79,8 +84,10 @@ describe.skipIf(!hasTestDb)("POST /webhook: storing messages", () => {
     expect(conv.rows[0].status).toBe("open");
     expect(conv.rows[0].last_message_preview).toBe("Hi, my order #4471 hasn't arrived yet.");
 
+    await waitForDrafts();
     const draft = await pool.query("SELECT * FROM drafts WHERE id = $1", [res.body.draftId]);
-    expect(draft.rows[0].status).toBe("pending");
+    expect(draft.rows[0].status).toBe("ready");
+    expect(draft.rows[0].text).toBe("Fake draft.");
     expect(draft.rows[0].message_id).toBe(res.body.messageId);
   });
 
@@ -108,8 +115,9 @@ describe.skipIf(!hasTestDb)("POST /webhook: storing messages", () => {
     expect(second.body.conversationId).toBe(first.body.conversationId);
     expect(await count("conversations")).toBe(1);
 
+    await waitForDrafts();
     const drafts = await pool.query("SELECT id, status FROM drafts ORDER BY created_at");
-    expect(drafts.rows.map((d) => d.status)).toEqual(["superseded", "pending"]);
+    expect(drafts.rows.map((d) => d.status)).toEqual(["superseded", "ready"]);
   });
 
   test("different customers get different conversations", async () => {
@@ -123,7 +131,7 @@ describe.skipIf(!hasTestDb)("POST /webhook: storing messages", () => {
     expect(results.every((r) => r.status === 200)).toBe(true);
     expect(await count("conversations")).toBe(1);
     expect(await count("messages")).toBe(5);
-    const live = await pool.query("SELECT count(*) FROM drafts WHERE status = 'pending'");
+    const live = await pool.query("SELECT count(*) FROM drafts WHERE status IN ('pending', 'ready', 'failed')");
     expect(Number(live.rows[0].count)).toBe(1);
   });
 

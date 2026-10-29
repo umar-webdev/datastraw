@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// An env var set to "" (e.g. `LLM_FALLBACK_MODEL=` in .env) counts as not set.
+const optional = <T extends z.ZodType>(schema: T) => z.preprocess((v) => (v === "" ? undefined : v), schema.optional());
+
 // All configuration comes from env vars. The server refuses to start if any are missing.
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -10,6 +13,12 @@ const EnvSchema = z.object({
   LLM_BASE_URL: z.string().url(),
   LLM_API_KEY: z.string().min(1),
   LLM_MODEL: z.string().min(1),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  // Optional second model used for the retry when the first call fails (e.g. the primary is overloaded).
+  // Its URL and key default to the primary's, so a fallback model on the same provider only needs LLM_FALLBACK_MODEL.
+  LLM_FALLBACK_MODEL: optional(z.string()),
+  LLM_FALLBACK_BASE_URL: optional(z.string().url()),
+  LLM_FALLBACK_API_KEY: optional(z.string()),
   SEED_AGENT_EMAIL: z.string().email(),
   SEED_AGENT_PASSWORD: z.string().min(8),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),

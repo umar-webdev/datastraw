@@ -81,6 +81,11 @@ Short ADR-style records: context → decision → why → trade-off / when to re
 - **Decision:** Approve is allowed when the draft status is `failed`. The editor is empty and the agent types the reply.
 - **Why:** The AI only assists. An LLM outage should slow agents down, not stop them.
 
+## D19. A fallback model for the retry
+- **Decision:** `completeChat` makes at most two tries. The first uses the primary model; the retry uses `LLM_FALLBACK_MODEL` (optionally on another provider via `LLM_FALLBACK_BASE_URL`/`LLM_FALLBACK_API_KEY`) when it's set, else the primary again after a short wait.
+- **Why:** While building, Gemini's free tier returned 503 "high demand" or timed out on roughly half of the calls for a while. Retrying the same overloaded model helps little; a second provider makes failures independent. Drafts that still fail are retried by the sweeper (up to 3 attempts), and the agent can always write the reply by hand (D16).
+- **Trade-off:** two providers can word replies slightly differently. Each draft records the model that wrote it.
+
 ## D18. Bun for runtime, package manager and tests
 - **Decision:** Bun runs the server's TypeScript directly (`bun --watch` in dev, no `tsc` build), manages the workspaces (`bun install`), runs Vite for the client and runs the tests (`bun test`). Passwords use `Bun.password` (bcrypt), so no native `bcrypt` package is needed. `tsc --noEmit` is only a typecheck.
 - **Why:** It's one tool instead of node + npm + tsx + vitest, installs and starts faster, and has fewer moving parts for someone taking the project over.

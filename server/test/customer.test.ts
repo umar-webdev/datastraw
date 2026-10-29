@@ -2,13 +2,18 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { pool } from "../src/db/pool";
-import { hasTestDb, makeEvent, resetDb, signed } from "./helpers";
+import { hasTestDb, makeEvent, resetDb, settleDrafts, signed, waitForDrafts } from "./helpers";
 
 const app = createApp();
 const aisha = { id: "cust_1042", name: "Aisha Khan", phone: "+919800000001" };
 
 describe.skipIf(!hasTestDb)("Customer view endpoints", () => {
-  beforeEach(resetDb);
+  // Let the previous test's background drafting finish before wiping the tables.
+  // (Done here rather than in afterEach: on Bun 1.1, awaiting DB work in afterEach never resumes.)
+  beforeEach(async () => {
+    await settleDrafts();
+    await resetDb();
+  });
 
   test("a Customer view message is stored exactly like a webhook message", async () => {
     const res = await request(app).post("/api/customer/messages").send({ customer: aisha, text: "Return policy?" });
@@ -47,6 +52,7 @@ describe.skipIf(!hasTestDb)("Customer view endpoints", () => {
 
   test("the conversation shows messages and approved replies, never drafts", async () => {
     const sent = await request(app).post("/api/customer/messages").send({ customer: aisha, text: "Hello" });
+    await waitForDrafts();
     await pool.query("UPDATE drafts SET status = 'ready', text = 'SECRET DRAFT TEXT' WHERE id = $1", [sent.body.draftId]);
 
     const res = await request(app).get("/api/customer/conversation").query({ customerId: aisha.id });
