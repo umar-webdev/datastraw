@@ -72,13 +72,13 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 
 ## Phase 5 — Frontend (70 min)
 
-- [ ] `App.tsx`: top bar with `Customer | Agent` toggle (NavLinks to `/customer` and `/agent`).
-- [ ] `api/` typed fetch helpers (`credentials: 'include'`, throw on non-2xx with server message).
-- [ ] **Customer view:** test customer picker (3 seeded + "new customer" name/phone form, remembered in localStorage), thread (customer right, agent left), composer, sample-message chips, poll 4 s, optimistic "sending…".
-- [ ] **Login page**, protected route wrapper (calls `/me`, redirects to login).
-- [ ] **Conversation list:** name, preview, relative time, status badge; poll 5 s; click → page.
-- [ ] **Conversation page:** thread, draft panel — spinner (`pending`), textarea pre-filled (`ready`), warning + reason (`needs_attention`), error + empty editor (`failed`); Approve (disabled while saving / empty), Regenerate; on 409 refetch + toast.
-- [ ] Minimal clean CSS; works on laptop width. Empty/loading/error states everywhere.
+- [x] `App.tsx`: top bar with `Customer | Agent` toggle (NavLinks to `/customer` and `/agent`).
+- [x] `api/` typed fetch helpers (`credentials: 'include'`, throw on non-2xx with server message).
+- [x] **Customer view:** test customer picker (3 seeded + "new customer" name/phone form, remembered in localStorage), thread (customer right, agent left), composer, sample-message chips, poll 4 s, optimistic "sending…".
+- [x] **Login page**, protected route wrapper (calls `/me`, redirects to login).
+- [x] **Conversation list:** name, preview, relative time, status badge; poll 5 s; click → page.
+- [x] **Conversation page:** thread, draft panel — spinner (`pending`), textarea pre-filled (`ready`), warning + reason (`needs_attention`), error + empty editor (`failed`); Approve (disabled while saving / empty), Regenerate; on 409 refetch + toast.
+- [x] Minimal clean CSS; works on laptop width. Empty/loading/error states everywhere.
 
 **Done when:** the full "You are done when" checklist passes locally.
 

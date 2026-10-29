@@ -1,20 +1,28 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from './api/client'
+import { AgentView } from './agent/AgentView'
+import { SESSION_KEY, useSession } from './agent/session'
+import { CustomerView } from './customer/CustomerView'
 
-type Health = { ok: boolean; db: boolean }
-
-// Phase 0 placeholder: proves the client reaches the server through the proxy.
-function HealthBadge() {
-  const { data, isError } = useQuery({
-    queryKey: ['health'],
-    queryFn: async (): Promise<Health> => (await fetch('/health')).json(),
+function SessionControls() {
+  const queryClient = useQueryClient()
+  const { data: agent } = useSession()
+  const logout = useMutation({
+    mutationFn: () => api('/api/auth/logout', { method: 'POST' }),
+    onSettled: () => {
+      queryClient.setQueryData(SESSION_KEY, null)
+      queryClient.removeQueries({ queryKey: ['agent'] })
+    },
   })
-  if (isError) return <span className="badge badge-bad">server unreachable</span>
-  if (!data) return <span className="badge">checking…</span>
+  if (!agent) return null
   return (
-    <span className={`badge ${data.ok ? 'badge-ok' : 'badge-bad'}`}>
-      {data.ok ? 'server + db ok' : 'db down'}
-    </span>
+    <div className="session">
+      <span className="muted small">{agent.email}</span>
+      <button type="button" className="button button-small" onClick={() => logout.mutate()}>
+        Sign out
+      </button>
+    </div>
   )
 }
 
@@ -22,18 +30,18 @@ export default function App() {
   return (
     <>
       <header className="topbar">
-        <strong>Verdant &amp; Co Support</strong>
-        <nav className="toggle" aria-label="View">
+        <strong className="brand">Verdant &amp; Co Support</strong>
+        <nav className="toggle" aria-label="Switch view">
           <NavLink to="/customer">Customer</NavLink>
           <NavLink to="/agent">Agent</NavLink>
         </nav>
-        <HealthBadge />
+        <SessionControls />
       </header>
       <main className="page">
         <Routes>
           <Route path="/" element={<Navigate to="/customer" replace />} />
-          <Route path="/customer" element={<p>Customer view — coming in Phase 5.</p>} />
-          <Route path="/agent/*" element={<p>Agent view — coming in Phase 5.</p>} />
+          <Route path="/customer" element={<CustomerView />} />
+          <Route path="/agent/*" element={<AgentView />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>
       </main>
