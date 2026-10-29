@@ -35,8 +35,9 @@ export function createApp() {
 
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));
-    // SPA fallback: let React Router handle any other GET.
-    app.get(/^(?!\/(api|webhook|health)).*/, (_req, res) => {
+    // SPA fallback: let React Router handle any other page. A missing /assets file gets a real 404 rather than
+    // index.html, so a stale bundle fails loudly instead of being parsed as HTML.
+    app.get(/^(?!\/(api|webhook|health|assets)(\/|$)).*/, (_req, res) => {
       res.sendFile(path.join(clientDist, "index.html"));
     });
   }
