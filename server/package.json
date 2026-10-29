@@ -6,6 +6,7 @@
     "dev": "bun --env-file=../.env --watch src/index.ts",
     "start": "bun src/index.ts",
     "db:setup": "bun --env-file=../.env src/db/setup.ts",
+    "webhook": "bun scripts/send-webhook.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

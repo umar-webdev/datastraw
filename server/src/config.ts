@@ -13,6 +13,8 @@ const EnvSchema = z.object({
   SEED_AGENT_EMAIL: z.string().email(),
   SEED_AGENT_PASSWORD: z.string().min(8),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  // Single-brand deployment: webhooks for any other brand are rejected.
+  BRAND_ID: z.string().min(1).default("verdant-co"),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

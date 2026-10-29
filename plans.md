@@ -32,13 +32,13 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 
 ## Phase 2 — Ingest + webhook (50 min) ⭐ core
 
-- [ ] `lib/signature.ts`: `verifySignature(rawBody, header, secret)` — parse `sha256=`, HMAC, `timingSafeEqual`, length check first.
-- [ ] zod `WebhookPayload` schema matching the spec format.
-- [ ] `services/ingest.ts` `ingestMessage(payload, source)` — single transaction: dedup event → upsert customer → get/create open conversation → insert message → update conversation preview → supersede live drafts → insert `pending` draft. Returns ids + `duplicate` flag.
-- [ ] `routes/webhook.ts`: `express.raw` → verify → parse/validate → ignore non-text → brand check → ingest → `200` → kick off `generateDraft` (stub for now).
-- [ ] `routes/customer.ts`: `POST /api/customer/messages` (builds webhook-shaped payload), `GET /api/customer/conversation`, `GET /api/customer/test-customers`.
-- [ ] `scripts/send-webhook.ts` (or `.sh`): signs and POSTs a sample payload — used locally, against prod, and in the README.
-- [ ] Tests: signature valid / invalid / missing; duplicate event → one message; second message → same conversation.
+- [x] `lib/signature.ts`: `verifySignature(rawBody, header, secret)` — parse `sha256=`, HMAC, `timingSafeEqual`, length check first.
+- [x] zod `WebhookPayload` schema matching the spec format.
+- [x] `services/ingest.ts` `ingestMessage(payload, source)` — single transaction: dedup event → upsert customer → get/create open conversation → insert message → update conversation preview → supersede live drafts → insert `pending` draft. Returns ids + `duplicate` flag.
+- [x] `routes/webhook.ts`: `express.raw` → verify → parse/validate → ignore non-text → brand check → ingest → `200` → kick off `generateDraft` (stub for now).
+- [x] `routes/customer.ts`: `POST /api/customer/messages` (builds webhook-shaped payload), `GET /api/customer/conversation`, `GET /api/customer/test-customers`.
+- [x] `scripts/send-webhook.ts` (or `.sh`): signs and POSTs a sample payload — used locally, against prod, and in the README.
+- [x] Tests: signature valid / invalid / missing; duplicate event → one message; second message → same conversation.
 
 **Done when:** a signed curl creates customer + conversation + message + pending draft; a replay returns `duplicate: true`; a bad signature returns 401.
 

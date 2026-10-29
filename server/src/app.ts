@@ -4,6 +4,8 @@ import path from "node:path";
 import { isDbHealthy } from "./db/pool";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { requestId } from "./middleware/requestId";
+import { createCustomerRouter } from "./routes/customer";
+import { webhookRouter } from "./routes/webhook";
 
 // Built React app, served from the same origin as the API (see decision D3).
 const clientDist = path.resolve(import.meta.dir, "../../client/dist");
@@ -20,7 +22,10 @@ export function createApp() {
   });
 
   // The webhook route must be mounted before express.json(): it needs the raw body for the signature.
+  app.use(webhookRouter);
+
   app.use("/api", express.json({ limit: "100kb" }));
+  app.use("/api/customer", createCustomerRouter());
   app.use("/api", notFound);
 
   if (existsSync(clientDist)) {

@@ -7,6 +7,7 @@ declare global {
     interface Request {
       id: string;
       log: typeof logger;
+      clientIp: string;
     }
   }
 }
@@ -15,6 +16,8 @@ declare global {
 export function requestId(req: Request, res: Response, next: NextFunction) {
   req.id = req.header("x-request-id") ?? randomUUID();
   req.log = logger.child({ requestId: req.id });
+  // Read now: on Bun 1.1.x, req.ip can become undefined once a JSON body has been read.
+  req.clientIp = req.ip ?? req.socket.remoteAddress ?? "unknown";
   res.setHeader("x-request-id", req.id);
 
   const start = Date.now();

@@ -86,6 +86,7 @@ Short ADR-style records: context → decision → why → trade-off / when to re
 - **Why:** It's one tool instead of node + npm + tsx + vitest, installs and starts faster, and has fewer moving parts for someone taking the project over.
 - **What stays standard:** Express, `pg` and Vite are used unchanged. The code doesn't depend on Bun-only APIs beyond `Bun.password`, so moving back to Node later is small. I kept `pg` rather than Bun's built-in SQL client because `pg` is battle-tested with Supabase's pooler.
 - **Deploy:** a Dockerfile on the `oven/bun` image, so Render runs exactly the Bun version used locally.
+- **Quirk found:** on Bun 1.1.21, `req.ip` can turn `undefined` after a JSON body is parsed inside a mounted router, which crashed the rate limiter. The client IP is now captured as the first step of every request and the limiter uses that saved value.
 
 ## D17. Webhook responses for edge cases
 | Case | Response | Why |
