@@ -86,19 +86,19 @@ Design is in [architecture.md](architecture.md), reasons are in [decision.md](de
 
 ## Phase 6 — Deploy (30 min)
 
-- [ ] Express serves `client/dist` + SPA fallback for non-API routes.
-- [ ] Root `build` (client) and `start` (`bun server/src/index.ts`) scripts.
-- [ ] Dockerfile on `oven/bun`; Render web service from it, env vars, health check `/health`.
-- [ ] Supabase: use the pooled connection string, SSL on.
-- [ ] Production smoke test: run the done-checklist on the live URL + `send-webhook` script against the live `/webhook`.
+- [x] Express serves `client/dist` + SPA fallback for non-API routes.
+- [x] Root `build` (client) and `start` (`bun server/src/index.ts`) scripts.
+- [x] Dockerfile on `oven/bun`; Render web service from it, env vars, health check `/health`.
+- [x] Supabase: use the pooled connection string, SSL on.
+- [x] Production smoke test: run the done-checklist on the live URL + `send-webhook` script against the live `/webhook`.
 - [ ] Uptime ping (cron-job.org → `/health` every 10 min) to avoid cold starts during review.
 
 ---
 
 ## Phase 7 — Submission (30 min, outside build time)
 
-- [ ] README (≤1 page): run locally, stack + why, main decisions, what was cut, AI-tool help + one thing it got wrong, the two answers (draft in decision.md).
-- [ ] Check that no secrets are in git history (`git log -p | grep -i key`).
+- [x] README (≤1 page): run locally, stack + why, main decisions, what was cut, AI-tool help + one thing it got wrong, the two answers (draft in decision.md).
+- [x] Check that no secrets are in git history (`git log -p | grep -i key`).
 - [ ] Demo video ≤3 min: end-to-end flow (customer → agent → approve → customer) → webhook via curl → Dubai/allergy `needs_attention` → one key decision (async drafts + sweeper) → one improvement.
 - [ ] Submit the Google Form: live URL, agent test login, webhook URL, repo link, video link.
 - [ ] Keep the deployment live until Datastraw replies.
